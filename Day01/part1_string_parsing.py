@@ -61,3 +61,7 @@ if __name__ == '__main__':
 
     t = timeit.Timer(lambda: re_parse_string(calibration_string))
     print('regex function:', t.timeit(100), '<usec>')
+
+    with open('/workspaces/adventOfCode2023/Day01/calibration_document.txt','r') as infile:
+        calibration_string = infile.read()
+        print(re_parse_string(calibration_string))
