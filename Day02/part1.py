@@ -87,7 +87,7 @@ def check_games(game_string, assumed_ball_count):
     # create dict objct w/ keys being Game IDs and values being the pull 
     # strings
     games = parse_game_string(game_string)
-    sum = 0
+    _sum = 0
     for gameID, pull_strings in games.items():
         pull_bools = []
         for pull_string in pull_strings:
@@ -95,8 +95,8 @@ def check_games(game_string, assumed_ball_count):
             pull_bool = judge_pull(pull_dict, assumed_ball_count)
             pull_bools.append(pull_bool)
         if np.prod(pull_bools) != 0:
-            sum += gameID
-    return sum
+            _sum += gameID
+    return _sum
 
 ### TEST HANDLES
 if __name__ == '__main__':
