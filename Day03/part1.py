@@ -33,96 +33,113 @@ of the part numbers in the engine schematic?
 ### PREAMBLE
 import re
 
-digit_list = ['1','2','3','4','5','6','7','8','9','0']
 
+### FUNCTIONS
 def parse_schematics(schematics_string):
     """
     parse the schematics file into lines. sum up all numbers adjacent to at 
     least one symbol. 
-    1) iterating over each line, find symbols on the line.
-        a) check for numbers adjacent to each symbol on the same line. 
-        b) check for numbers adjacent to each symbol on the next line. 
-
+    1) iterating over each line, find numbers on the line.
+        a) check for symbols adjacent to each symbol on the same line. 
+        b) check for symbols adjacent to each symbol on the previous line. 
+        c) check for symbols adjacent to each symbol on the next line. 
+        d) if any adjacent symbols, add number to a sum.
+    2) return the sum.
     """
     _sum = 0
     schema_lines = schematics_string.split('\n')
     nlines = len(schema_lines)
     # loop over all lines in the schematics
     for j, line in enumerate(schema_lines):
-        # create the regex iterator
-        symbol_iterator = re.finditer(r'[@$+-/=#%*&]',line)
-        # get list of symbol indices
-        symbol_indices = [_match.start(0) for _match in re.finditer(r'[@$+=#%*&\/\-]',line)]
-        print(j, [_match for _match in re.finditer(r'[@$+=#%*&\/\-]',line)])
+        # create the number regex iterator
+        number_iterator = re.finditer(r'\d+',line)
+        # get list of tuples, where each tuple is filled with the number value 
+        # and a tuple of len = 2 with the indices associated with the number
+        numbers = [(int(line[_match.start(0):_match.end(0)]),_match.span()) for _match in number_iterator]
 
-        # move to next line if no symbol is found on the current line
-        if not symbol_indices:
-            print('\n')
+        # skip the line if no numbers are present
+        if not numbers:
             continue
-        
-        # loop over all symbols on this line
-        j_numbers = [(int(line[_match.start(0):_match.end(0)]),range(*_match.span())) for _match in re.finditer(r'\d+',line)]
-        
-        # get adjacent line indices 
-        i = j - 1
-        k = j + 1
 
-        if i == -1:
-            print(schema_lines[i])
-            i_numbers = [(int(schema_lines[i][_match.start(0):_match.end(0)]),range(*_match.span())) for _match in re.finditer(r'\d+',schema_lines[i])]
+        # create the symbol regex iterator
+        symbol_iterator = re.finditer(r'[\@\$\+\=\#\%\*\&\/\-]',line)
+        # get list of symbol indices for this line
+        j_symbols = [_match.start(0) for _match in symbol_iterator]
+
+        # get list of symbol indices for the previous line, j-1
+        if j-1 >= 0:
+            symbol_iterator = re.finditer(r'[\@\$\+\=\#\%\*\&\/\-]',schema_lines[j-1])
+            i_symbols = [_match.start(0) for _match in symbol_iterator]
         else:
-            i_numbers = []
+            i_symbols = []
 
-        print(line)
-
-        if k <= nlines:
-            print(schema_lines[k])
-            k_numbers = [(int(schema_lines[k][_match.start(0):_match.end(0)]),range(*_match.span())) for _match in re.finditer(r'\d+',schema_lines[k])]
+        # get list of symbol indices for the next line
+        if j+1 < nlines:
+            symbol_iterator = re.finditer(r'[\@\$\+\=\#\%\*\&\/\-]',schema_lines[j+1])
+            k_symbols = [_match.start(0) for _match in symbol_iterator]
         else:
-            k_numbers = []
+            k_symbols = []
 
-        for symbol_index in symbol_indices:
-            # find adjacent numbers to symbol on the same line
-            line_numbers = get_numbers(j_numbers,symbol_index)
-            _sum += sum(line_numbers)
-            print('Same line:', sum(line_numbers))
-         
-            # find adjacent numbers to symbol on the previous line
-            line_numbers = get_numbers(i_numbers,symbol_index)
-            _sum += sum(line_numbers)
-            print('Previous line:', sum(line_numbers))
+
+        adjacent_bool = False
+        # loop over all numbers on the j line; look for adjacent symbols
+        for number in numbers:
+            num = number[0]
+            # get the the indices where symbols might be adjacent
+            adjacent_indices = range(number[1][0]-1,number[1][1]+1)
+            # determine if the number is adjacent to a symbol on the j line
+            adjacent_bool = adjacency(adjacent_indices, j_symbols)
+            # if True
+            if adjacent_bool:
+                # add the number to the sum
+                _sum += num
+                # move on to the next number
+                continue
             
-            # find adjacent numbers to symbol on the next line
-            line_numbers = get_numbers(k_numbers,symbol_index)
-            _sum += sum(line_numbers)
-            print('Next line:', sum(line_numbers))
+            # check to see if i_symbols is empty
+            if i_symbols:
+                # determine if the number is adjacent to a symbol on the i line
+                adjacent_bool = adjacency(adjacent_indices, i_symbols)
+                # if True
+                if adjacent_bool:
+                    # add the number to the sum
+                    _sum += num
+                    # move on to the next number
+                    continue
+    
+            # check to see if k_symbols is empty
+            if k_symbols:
+                # determine if the number is adjacent to a symbol on the k line
+                adjacent_bool = adjacency(adjacent_indices, k_symbols)
+                # if True
+                if adjacent_bool:
+                    # add the number to the sum
+                    _sum += num
+                    # move on to the next number
+                    continue
         
-        print('\n')
     
     return _sum
 
-def get_numbers(number_list,symbol_index):
+
+def adjacency(indices,symbol_indices_list):
     """
-    get number(s) on line line_index that are adjacent to a symbol at symbol_index
+    check whether symbol indices are within the indices associated with numbers
+    return True if at least one symbol is found in the indices or False 
+    otherwise
     """
-    # determine indices of potentially adjacent digits
-    before = symbol_index - 1
-    after  = symbol_index + 1
-  
-    # gather numbers that are adjacent
-    numbers = []
-    for number in number_list:
-        # check to see if a number is in the before index
-        if before in number[1] or symbol_index in number[1] or after in number[1]:
-            numbers.append(number[0])
-        
-    return numbers
+    # loop over symbol indices to check if they are in the indices
+    for symbol_index in symbol_indices_list:
+        # check if symbol index in number indices
+        if symbol_index in indices:
+            return True
+    # if no symbol is within the number indices, return False
+    return False
 
 
 ### TEST HANDLES
 if __name__ == '__main__':
-    schematics = """
-467..114..
+    schematics = """467..114..
 ...*......
 ..35..633.
 ......#...
@@ -137,5 +154,8 @@ if __name__ == '__main__':
     print(value)
     assert value == 4361
 
-
+    with open('./engine_schematics.txt','r') as infile:
+        schematics = infile.read()
+    value = parse_schematics(schematics)
+    print(value)
 
