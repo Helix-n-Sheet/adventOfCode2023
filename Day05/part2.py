@@ -102,31 +102,38 @@ number:
 - Seed number 14 corresponds to soil number 14.
 - Seed number 55 corresponds to soil number 57.
 - Seed number 13 corresponds to soil number 13.
+.
+.
+.
 
-The gardener and his team want to get started as soon as possible, so they'd 
-like to know the closest location that needs a seed. Using these maps, find the 
-lowest location number that corresponds to any of the initial seeds. To do this, 
-you'll need to convert each seed number through other categories until you can 
-find its corresponding location number. In this example, the corresponding types 
-are:
+Re-reading the almanac, it looks like the seeds: line actually describes ranges 
+of seed numbers.
 
-- Seed 79, soil 81, fertilizer 81, water 81, light 74, temperature 78, humidity 
-  78, location 82.
-- Seed 14, soil 14, fertilizer 53, water 49, light 42, temperature 42, humidity 
-  43, location 43.
-- Seed 55, soil 57, fertilizer 57, water 53, light 46, temperature 82, humidity 
-  82, location 86.
-- Seed 13, soil 13, fertilizer 52, water 41, light 34, temperature 34, humidity 
-  35, location 35.
+The values on the initial seeds: line come in pairs. Within each pair, the first 
+value is the start of the range and the second value is the length of the range. 
+So, in the first line of the example above:
 
-So, the lowest location number in this example is 35.
+seeds: 79 14 55 13
 
-What is the lowest location number that corresponds to any of the initial seed 
-numbers?
+This line describes two ranges of seed numbers to be planted in the garden. The 
+first range starts with seed number 79 and contains 14 values: 79, 80, ..., 91, 
+92. The second range starts with seed number 55 and contains 13 values: 55, 56, 
+..., 66, 67.
+
+Now, rather than considering four seed numbers, you need to consider a total of 
+27 seed numbers.
+
+In the above example, the lowest location number can be obtained from seed 
+number 82, which corresponds to soil 84, fertilizer 84, water 84, light 77, 
+temperature 45, humidity 46, and location 46. So, the lowest location number is 
+46.
+
+Consider all of the initial seed numbers listed in the ranges on the first line 
+of the almanac. What is the lowest location number that corresponds to any of 
+the initial seed numbers?
 """
 
 ### PREAMBLE
-import timeit
 
 
 ### FUNCTIONS
@@ -151,10 +158,10 @@ def parse_almanac(almanac_string):
         dict_key = lines[0].split(':')[0].split()[0]
         # the seeds block has a separate format
         if dict_key == 'seeds':
-            # grab the seed numbers from the same line
-            seed_nums = lines[0].split(':')[1].split()
+            # get the seed numbers, accounting for the new formatting
+            seed_ranges = parse_seed_block(lines[0])
             # add the seeds dict to the almanac dict
-            almanac_dict[dict_key] = [int(seed) for seed in seed_nums]
+            almanac_dict[dict_key] = seed_ranges
             # move on to the next block
             continue
 
@@ -166,8 +173,24 @@ def parse_almanac(almanac_string):
                 continue
             dest_start, source_start, range_len = line.split()
             almanac_dict[dict_key].append((int(source_start),int(dest_start),int(range_len)))
-            
+    
+    ###
+    nSeeds = sum([seed_range[1] for seed_range in seed_ranges])
+    print(nSeeds)
+
     return almanac_dict
+
+def parse_seed_block(seed_line):
+    """
+    parse the line of seeds, where each pair of numbers is a starting value and
+    the range length for the seeds to be planted.
+    return the list of ranges for seed numbers
+    """
+    numbers = [int(number) for number in seed_line.split(':')[1].split()]
+    number_pairs = list(zip(numbers[::2],numbers[1::2]))
+    print('Number of seed ranges:', len(number_pairs))
+    return number_pairs
+
 
 def determine_next_attribute(source_index,ranges_list):
     """
@@ -180,27 +203,6 @@ def determine_next_attribute(source_index,ranges_list):
         # boolean test to see the index is in the source range defined by 
         # _range[0] <= index < _range[0]+_range[2]
         if source_index >= _range[0] and source_index < _range[0]+_range[2]:
-            # if true, then the destination index is equal to the 
-            # destination_start value plus the difference between index and
-            # source_start values. 
-            return _range[1]+source_index-_range[0]
-    
-    # if the source_index value is not within any of the explicitly defined
-    # ranges, then return the same index.
-    return source_index
-
-
-def slower_determine_next_attribute(source_index,ranges_list):
-    """
-    check the mapping_dict to see if index is within source ranges explicitly 
-    defined. If it does sit in a defined range, return the associated 
-    destination value. Else, the mapping is 1:1 for source and destination. 
-    """
-    # loop over ranges defined in ranges_list
-    for _range in ranges_list:
-        # boolean test to see the index is in the source range defined by 
-        # _range[0] <= index < _range[0]+_range[2]
-        if source_index in range(_range[0],_range[0]+_range[2]):
             # if true, then the destination index is equal to the 
             # destination_start value plus the difference between index and
             # source_start values. 
@@ -233,12 +235,14 @@ def get_smallest_location(almanac_string):
     run the analysis
     """
     almanac_dict = parse_almanac(almanac_string)
-    locations = []
-    for seed in almanac_dict['seeds']:
-        loc = get_seed_location(seed, almanac_dict)
-        locations.append(int(loc))
-    #print(locations)
-    return min(locations)
+    min_location = 99999999
+    for seed_range in almanac_dict['seeds']:
+        _range = range(seed_range[0],seed_range[0]+seed_range[1])
+        for seed in _range:
+            loc = get_seed_location(seed, almanac_dict)
+            if loc < min_location:
+                min_location = loc
+    return min_location
 
 ### TEST HANDLING
 if __name__ == '__main__':
@@ -277,19 +281,12 @@ humidity-to-location map:
 56 93 4"""
 
     value = get_smallest_location(almanac_string)
-    assert value == 35
-    
-    t = timeit.Timer(lambda: get_smallest_location(almanac_string))
-    print('Current implementation:', t.timeit(100), '<usec>')
-    
+    assert value == 46
     print('\n\n')
 
     with open('./almanac.txt','r') as infile:
         almanac_string = infile.read()
     value = get_smallest_location(almanac_string)
     print(value)
-    
-    t = timeit.Timer(lambda: get_smallest_location(almanac_string))
-    print('Current implementation:', t.timeit(100), '<usec>')
 
 
