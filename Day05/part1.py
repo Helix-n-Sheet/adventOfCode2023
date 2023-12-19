@@ -129,11 +129,13 @@ numbers?
 
 
 ### FUNCTIONS
-def parse_almanac(almanac_string):
+def old_parse_almanac(almanac_string):
     """
     parse the full almanac file, creating a dict of dicts for the attribute map
     as well as starting seed numbers. 
     returns almanac_dict
+    NOTE: REALLY BORKED WHEN THE ALMANAC HAS HUGE RANGES. NEED TO AVOID CREATING
+    THE SUBDICTIONARIES THAT EXPLICITLY DEFINE THE MAPPING.
     """
     # break the file into the individual blocks
     mapping_blocks = almanac_string.split('\n\n')
@@ -173,14 +175,75 @@ def parse_almanac(almanac_string):
 
     return almanac_dict
 
-def determine_next_attribute(index,mapping_dict):
+def old_determine_next_attribute(index,mapping_dict):
     """
     check the mapping_dict to see if index is explicitly defined as a key. If it
     is defined, return the associated value. Else, the mapping is 1:1 for key 
     values. 
+    NOTE: WORKED FOR OLD FORMAT OF THE MAPPING DICT. VERY EFFICIENT WHEN DICT 
+    IS SMALL.
     """
     return mapping_dict.get(index,index)
     
+
+def parse_almanac(almanac_string):
+    """
+    parse the full almanac file, creating a dict of dicts for the attribute map
+    as well as starting seed numbers. 
+    returns almanac_dict that is a dict of lists, where each sublist is filled
+    with tuples associated with the mapping. These tuples are formatted as:
+    (source_start, destination_start, range_length) all formatted as ints.
+    """
+    # break the file into the individual blocks
+    mapping_blocks = almanac_string.split('\n\n')
+    # prep the dictionary
+    almanac_dict = {}
+    # loop over blocks
+    for block in mapping_blocks:
+        # break the block into lines
+        lines = block.split('\n')
+        # lines[0] holds the dict key
+        dict_key = lines[0].split(':')[0].split()[0]
+        # the seeds block has a separate format
+        if dict_key == 'seeds':
+            # grab the seed numbers from the same line
+            seed_nums = lines[0].split(':')[1].split()
+            # add the seeds dict to the almanac dict
+            almanac_dict[dict_key] = [int(seed) for seed in seed_nums]
+            # move on to the next block
+            continue
+
+        # parse other blocks
+        almanac_dict[dict_key] = []
+        # lines[0] for these just holds the key info
+        for line in lines[1:]:
+            if not line:
+                continue
+            dest_start, source_start, range_len = line.split()
+            almanac_dict[dict_key].append((int(source_start),int(dest_start),int(range_len)))
+            
+    return almanac_dict
+
+def determine_next_attribute(source_index,ranges_list):
+    """
+    check the mapping_dict to see if index is within source ranges explicitly 
+    defined. If it does sit in a defined range, return the associated 
+    destination value. Else, the mapping is 1:1 for source and destination. 
+    """
+    # loop over ranges defined in ranges_list
+    for _range in ranges_list:
+        # boolean test to see the index is in the source range defined by 
+        # _range[0] <= index < _range[0]+_range[2]
+        if source_index >= _range[0] and source_index < _range[0]+_range[2]:
+            # if true, then the destination index is equal to the 
+            # destination_start value plus the difference between index and
+            # source_start values. 
+            return _range[1]+source_index-_range[0]
+    
+    # if the source_index value is not within any of the explicitly defined
+    # ranges, then return the same index.
+    return source_index
+
 
 def get_seed_location(seed_number, almanac_dict):
     """
