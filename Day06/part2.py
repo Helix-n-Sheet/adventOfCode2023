@@ -12,7 +12,15 @@ for this question:
     v = a*t_hold, acceleration times t_hold to get velocity at the start of t.
     t = t_max - t_hold, t_max is the maximum amount of time for the race. 
     so, 
-    d = a*t_hold*(t_max - t_hold)
+    d = a*t_hold*(t_max - t_hold) = a*t_max*t_hold - a*t_hold**2 (equation of a
+    parabola)
+    since this function is a parabola with bounding conditions of 
+    0<= t_hold <= t_max, where at these bounds, d(t_hold=0,t_max) = 0, the 
+    problem becomes rather simple. The max distance will be at t_hold = t_max/2. 
+    Count the number of instances between 0 <= t_hold < t_max/2 then multiply by 
+    2 and add 1.
+    NOTE: implementing this strategy does not provide much of a timing 
+    improvement...
 """
 
 ### PREAMBLE
@@ -40,9 +48,20 @@ def calc_win_product(race_history_string, init_speed, accel):
     product = 1
     # loop over races in the history file
     for max_time, distance in race_history:
-        t_hold_values = np.arange(1,max_time,1)
+        # calc whole parabola
+        t_hold_values = np.arange(0,max_time+1,1)
         y_values = accel*t_hold_values*t_hold_values[::-1]
         nWinning_races = sum(np.greater(y_values,distance))
+        
+        # only calc half parabola
+        #t_hold_values = np.arange(0,max_time/2,1)
+        #y_values = accel*t_hold_values*(max_time - t_hold_values)
+        #nWinning_races = sum(np.greater(y_values,distance))*2 + 1
+        #if len(t_hold_values) % 2 == 0:
+        #    nWinning_races = sum(np.greater(y_values,distance))*2
+        #else: 
+        #    nWinning_races = sum(np.greater(y_values,distance))*2 + 1
+        
         product *= nWinning_races
     return product
 
