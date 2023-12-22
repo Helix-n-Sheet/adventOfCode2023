@@ -5,6 +5,7 @@ https://adventofcode.com/2023/day/7
 
 ### PREAMBLE
 import re
+import math
 
 start_node_suffix = 'A'
 end_node_suffix   = 'Z'
@@ -56,30 +57,28 @@ def traverse_network(nav_order, network, start_nodes, end_nodes):
     # get number of steps in the navigation order
     nOrders = len(nav_order)
     # step number starts at zero, so need to add 1 before returning
-    nSteps = 0
+    nSteps = []
     # loop until we've traversed to the end node
-    current_nodes = start_nodes
-    while True:
-        # determine what the next move instruction is, either R or L
-        step_instruction = nav_order[nSteps % nOrders]
-        # get the move instruction index, either 0 or 1
-        step_index = RL_map.get(step_instruction)
-        
-        # loop over all current nodes
-        next_nodes = []
-        for node in current_nodes:
+    for node in start_nodes:
+        step = 0
+        current_node = node
+        while True:
+            # determine what the next move instruction is, either R or L
+            step_instruction = nav_order[step % nOrders]
+            # get the move instruction index, either 0 or 1
+            step_index = RL_map.get(step_instruction)
             # grab the next node
-            next_nodes.append(network[node][step_index])
-        
-        # before we move on, gotta add to the step counter
-        nSteps += 1
-        # update current node
-        current_nodes = next_nodes
-        # test to see if all nodes finish at an end node, create a list of bools
-        # and check if all of the bools are True
-        exit_bool = all([node in end_nodes for node in current_nodes])
-        if exit_bool:
-            return nSteps
+            next_node = network[current_node][step_index]
+            # before we move on, gotta add to the step counter
+            step += 1 
+            # update current node
+            current_node = next_node
+            if current_node in end_nodes:
+                nSteps.append(step)
+                break
+    
+    final_steps = math.lcm(*nSteps)
+    return final_steps
 
 ### TEST HANDLING
 if __name__ == '__main__':
